@@ -333,14 +333,78 @@ ORDER BY total_inv DESC
 LIMIT 5;
 
 -- Question 10
-
+WITH ctea AS
+(
 SELECT dd.district,
-ROUND(SUM(investment_in_cr), 2) AS total_inv
-FROM
-fact_ts_ipass ts 
+ROUND(SUM(investment_in_cr), 2) AS total_inv_in_cr
+FROM fact_ts_ipass ts
 JOIN dim_date d 
 ON ts.month = d.month
 JOIN dim_districts dd 
 ON ts.dist_code = dd.dist_code
+WHERE d.fiscal_year BETWEEN 2021 AND 2022
 GROUP BY dd.district
-ORDER BY total_inv DESC;
+),
+cteb AS
+(
+SELECT dd.district,
+ROUND(SUM( documents_registered_rev + estamps_challans_rev)/10000000, 2) AS total_rev_stamps_in_cr
+FROM fact_stamps fs
+JOIN dim_date d 
+ON fs.month = d.month
+JOIN dim_districts dd 
+ON fs.dist_code = dd.dist_code
+WHERE d.fiscal_year BETWEEN 2021 AND 2022
+GROUP BY dd.district 
+),
+ctec AS
+(
+SELECT dd.district,
+SUM(category_Non_Transport + category_Transport)/10000000 AS total_vehicle_sales_in_cr
+FROM fact_transport ft
+JOIN dim_date d 
+ON ft.month = d.month
+JOIN dim_districts dd 
+ON ft.dist_code = dd.dist_code
+WHERE d.fiscal_year BETWEEN 2021 AND 2022
+GROUP BY dd.district
+)
+SELECT ctea.district,
+total_inv_in_cr, 
+total_rev_stamps_in_cr,
+total_vehicle_sales_in_cr
+FROM ctea
+JOIN cteb
+ON ctea.district = cteb.district
+JOIN ctec 
+ON cteb.district = ctec.district;
+
+-- Question 11
+
+SELECT sector,
+ROUND(SUM(investment_in_cr), 2)  AS total_inv,
+COUNT(DISTINCT ts.dist_code) AS no_of_districts
+FROM
+fact_ts_ipass ts
+JOIN dim_date d
+ON ts.month = d.month
+WHERE d.fiscal_year BETWEEN 2021 AND 2022
+GROUP BY sector
+ORDER BY total_inv DESC
+;
+
+-- Question 12
+
+SELECT fiscal_year,
+quarter,
+sector,
+ROUND(SUM(investment_in_cr), 2)  AS total_inv
+FROM
+fact_ts_ipass ts
+JOIN dim_date d
+ON ts.month = d.month
+GROUP BY fiscal_year, sector, quarter
+ORDER BY fiscal_year, quarter, total_inv DESC;
+
+
+
